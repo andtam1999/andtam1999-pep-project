@@ -11,7 +11,7 @@ public class MessageDAO {
         Connection conn = ConnectionUtil.getConnection();
         try {
             String sql = "INSERT INTO message(posted_by, message_text, time_posted_epoch) VALUES (?, ?, ?);";
-            PreparedStatement pstmt = conn.prepareStatement(sql);
+            PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             pstmt.setInt(1, account_id);
             pstmt.setString(2, message_text);
             pstmt.setLong(3, time_posted_epoch);
@@ -69,15 +69,35 @@ public class MessageDAO {
     public Message deleteMessageById(int message_id) {
         Connection conn = ConnectionUtil.getConnection();
         try {
-            String sql = "DELETE FROM message WHERE message_id = ?;";
+            String sql = "SELECT * FROM OLD TABLE (DELETE FROM message WHERE message_id = ?);";
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.setInt(1, message_id);
-            pstmt.executeUpdate();
-            ResultSet rs = pstmt.getGeneratedKeys();
+            ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
                 Message msg = new Message(message_id,
                                         rs.getInt("posted_by"),
                                         rs.getString("message_text"),
+                                        rs.getLong("time_posted_epoch"));
+                return msg;
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        return null;
+    }
+
+    public Message updateMessageById(int message_id, String message_text) {
+        Connection conn = ConnectionUtil.getConnection();
+        try {
+            String sql = "SELECT * FROM FINAL TABLE (UPDATE message SET message_text = ? WHERE message_id = ?);";
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, message_text);
+            pstmt.setInt(2, message_id);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                Message msg = new Message(message_id,
+                                        rs.getInt("posted_by"),
+                                        message_text,
                                         rs.getLong("time_posted_epoch"));
                 return msg;
             }
